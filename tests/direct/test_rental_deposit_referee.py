@@ -210,3 +210,27 @@ def test_malformed_llm_output_raises_user_error(
 
     assert contract.get_lease("lease-1")["status"] == "evidence"
     assert contract.credit_of(direct_bob) == 0
+
+
+def test_landlord_cannot_be_tenant(direct_vm, direct_deploy, direct_alice):
+    """A landlord cannot create a lease with themselves as the tenant."""
+    contract = _deploy(direct_deploy)
+    direct_vm.sender = direct_alice
+    direct_vm.value = DEPOSIT
+
+    with direct_vm.expect_revert("Landlord and tenant must be different addresses"):
+        contract.create_lease("lease-self", direct_alice, "standard terms")
+
+
+def test_empty_lease_inputs_rejected(direct_vm, direct_deploy, direct_alice, direct_bob):
+    """Empty lease id or terms are rejected."""
+    contract = _deploy(direct_deploy)
+    direct_vm.sender = direct_alice
+    direct_vm.value = DEPOSIT
+
+    with direct_vm.expect_revert("must not be empty"):
+        contract.create_lease("  ", direct_bob, "terms")
+
+    with direct_vm.expect_revert("must not be empty"):
+        contract.create_lease("lease-good", direct_bob, "   ")
+

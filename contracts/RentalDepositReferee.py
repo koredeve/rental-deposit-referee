@@ -110,20 +110,27 @@ class RentalDepositReferee(gl.Contract):
 	def create_lease(self, lease_id: str, tenant: Address, terms: str) -> None:
 		if gl.message.value == u256(0):
 			raise gl.vm.UserError(f"{ERROR_EXPECTED} Send value with the call")
-		if lease_id in self.leases:
+		clean_id = str(lease_id).strip()
+		clean_terms = str(terms).strip()
+		if not clean_id or not clean_terms:
+			raise gl.vm.UserError(f"{ERROR_EXPECTED} Lease id and terms must not be empty")
+		tenant_addr = Address(tenant)
+		if gl.message.sender_address == tenant_addr:
+			raise gl.vm.UserError(f"{ERROR_EXPECTED} Landlord and tenant must be different addresses")
+		if clean_id in self.leases:
 			raise gl.vm.UserError(f"{ERROR_EXPECTED} Lease id already exists")
-		self.leases[lease_id] = Lease(
+		self.leases[clean_id] = Lease(
 			landlord=gl.message.sender_address,
-			tenant=Address(tenant),
-			terms=terms,
+			tenant=tenant_addr,
+			terms=clean_terms,
 			deposit_atto=u256(gl.message.value),
 			status=STATUS_FUNDED,
 			tenant_share_pct=u256(0),
 			damages="",
 		)
-		self.move_in_photos[lease_id] = []
-		self.move_out_photos[lease_id] = []
-		self.lease_ids.append(lease_id)
+		self.move_in_photos[clean_id] = []
+		self.move_out_photos[clean_id] = []
+		self.lease_ids.append(clean_id)
 
 	@gl.public.write
 	def submit_move_in(self, lease_id: str, photos: DynArray[str]) -> None:
